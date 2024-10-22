@@ -1,0 +1,194 @@
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+local beamPart
+local beam
+local billboard
+local textLabel
+local tpButton
+
+local function teleportToChest(chest)
+    if chest and chest.Position then
+        character:MoveTo(chest.Position + Vector3.new(0, 5, 0))  
+    end
+end
+
+local function createTPButton(chest)
+    if tpButton then
+        tpButton:Destroy()
+    end
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+
+    tpButton = Instance.new("TextButton")
+    tpButton.Size = UDim2.new(0, 200, 0, 50)
+    tpButton.Position = UDim2.new(0, 10, 0.95, -25)  
+    tpButton.Text = "TP to Chest"
+    tpButton.TextScaled = true
+    tpButton.BackgroundColor3 = Color3.new(0, 1, 0)  
+    tpButton.TextColor3 = Color3.new(1, 1, 1)  
+    tpButton.Parent = screenGui
+
+    tpButton.MouseButton1Click:Connect(function()
+        teleportToChest(chest)
+    end)
+end
+
+local function createGuideBeam(chest)
+    if beamPart then
+        beamPart:Destroy()
+        beam:Destroy()
+    end
+
+    beamPart = Instance.new("Part")
+    beamPart.Anchored = true
+    beamPart.CanCollide = false
+    beamPart.Size = Vector3.new(0.2, 0.2, 0.2)
+    beamPart.Transparency = 1  
+    beamPart.CFrame = chest.CFrame
+
+    local attachment1 = Instance.new("Attachment", character:FindFirstChild("HumanoidRootPart"))
+    local attachment2 = Instance.new("Attachment", beamPart)
+
+    beam = Instance.new("Beam")
+    beam.Attachment0 = attachment1
+    beam.Attachment1 = attachment2
+    beam.Width0 = 2  
+    beam.Width1 = 2  
+    
+    beam.Texture = "rbxassetid://4904657323"  
+    beam.TextureSpeed = 5  
+    beam.TextureLength = 5  
+
+    beam.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),  
+        ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 255, 0)),  
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),  
+        ColorSequenceKeypoint.new(0.75, Color3.fromRGB(0, 255, 255)),  
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))  
+    })
+
+    beam.Parent = attachment1
+    beamPart.Parent = game.Workspace
+end
+
+local function createBillboard(chest)
+    if billboard then
+        billboard:Destroy()
+    end
+
+    billboard = Instance.new("BillboardGui")
+    billboard.Size = UDim2.new(0, 200, 0, 100)  
+    billboard.Adornee = chest
+    billboard.AlwaysOnTop = true
+
+    textLabel = Instance.new("TextLabel")
+    textLabel.Text = "Chest"
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.TextColor3 = Color3.new(1, 1, 1)  
+    textLabel.TextStrokeTransparency = 0  
+    textLabel.Font = Enum.Font.Cartoon  
+    textLabel.TextScaled = true  
+    textLabel.BackgroundTransparency = 1
+    textLabel.Parent = billboard
+
+    billboard.Parent = chest
+end
+
+local function updateDistance(chest)
+    local distance = (character.HumanoidRootPart.Position - chest.Position).Magnitude
+    textLabel.Text = string.format("Chest | %.2f studs away", distance)
+
+    beamPart.CFrame = chest.CFrame
+end
+
+local function monitorChest()
+    while true do
+        local chest = game:GetService("Workspace"):FindFirstChild("Chest")
+
+        if chest and chest.Parent then
+            createGuideBeam(chest)
+            createBillboard(chest)
+            createTPButton(chest)  
+            updateDistance(chest)
+            beam.Enabled = true
+        else
+            if beam then
+                beam.Enabled = false
+            end
+            if textLabel then
+                textLabel.Text = "Chest not found"
+            end
+            if tpButton then
+                tpButton:Destroy()
+                tpButton = nil
+            end
+        end
+        wait(0.1)
+    end
+end
+
+spawn(monitorChest)
+delay(0.3, function()
+local player = game.Players.LocalPlayer
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local notificationLabel = Instance.new("TextLabel")
+notificationLabel.Size = UDim2.new(0, 350, 0, 50)
+notificationLabel.Position = UDim2.new(0.5, -175, 0.2, -25)
+notificationLabel.Text = "Chest ESP Activated"
+notificationLabel.TextScaled = true
+notificationLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0, 0.7)
+notificationLabel.TextColor3 = Color3.fromRGB(1, 1, 1)
+notificationLabel.Font = Enum.Font.GothamBold
+
+local uiStroke = Instance.new("UIStroke")
+uiStroke.Parent = notificationLabel
+uiStroke.Thickness = 4 
+
+local function createLavaLampTween(stroke)
+    local tweenService = game:GetService("TweenService")
+
+    local colorSequence = {
+        Color3.fromRGB(255, 0, 0),  
+        Color3.fromRGB(255, 165, 0), 
+        Color3.fromRGB(255, 255, 0), 
+        Color3.fromRGB(0, 255, 0),  
+        Color3.fromRGB(0, 255, 255), 
+        Color3.fromRGB(0, 0, 255),  
+        Color3.fromRGB(255, 0, 255)  
+    }
+
+    local currentIndex = 1
+    local tweenDuration = 0.5  
+
+    local function playNextTween()
+        local nextIndex = currentIndex % #colorSequence + 1
+        local goal = { Color = colorSequence[nextIndex] }
+        local tweenInfo = TweenInfo.new(tweenDuration, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
+
+        local tween = tweenService:Create(stroke, tweenInfo, goal)
+        tween:Play()
+
+        tween.Completed:Connect(function()
+            currentIndex = nextIndex
+            playNextTween()  
+        end)
+    end
+
+    playNextTween()  
+end
+
+createLavaLampTween(uiStroke)
+
+notificationLabel.Parent = screenGui
+
+coroutine.wrap(function()
+    wait(10)
+    notificationLabel:TweenSizeAndPosition(UDim2.new(0, 0, 0, 0), UDim2.new(0.5, 0, 0.2, 0), "Out", "Sine", 1)
+    wait(1)
+    screenGui:Destroy()
+end)()
+end)
